@@ -149,7 +149,7 @@ extern NSInteger const RMStoreErrorCodeUnableToCompleteVerification;
  @see RMStoreAppReceiptVerifier
  @see RMStoreTransactionReceiptVerifier
  */
-@property (nonatomic, weak) id<RMStoreReceiptVerifier> receiptVerifier;
+@property (nonatomic, strong) NSHashTable<id<RMStoreReceiptVerifier>> *receiptVerifiers;
 
 /**
  The transaction persistor. It is recommended to provide your own obfuscator if piracy is a concern. The store will use weak obfuscation via `NSKeyedArchiver` by default.
@@ -183,6 +183,16 @@ extern NSInteger const RMStoreErrorCodeUnableToCompleteVerification;
  @param observer The observer to remove.
  */
 - (void)removeStoreObserver:(id<RMStoreObserver>)observer;
+
+/** Adds an observer to the receipt verificator.
+@param verifier The observer to add.
+*/
+- (void)addReceiptVerifier:(id<RMStoreReceiptVerifier>)verifier;
+
+/** Removes an observer from the receipt verificator.
+@param verifier The observer to remove.
+*/
+- (void)removeReceiptVerifier:(id<RMStoreReceiptVerifier>)verifier;
 
 @end
 

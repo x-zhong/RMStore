@@ -155,6 +155,7 @@ typedef void (^RMStoreSuccessBlock)();
         _products = [NSMutableDictionary dictionary];
         _productsRequestDelegates = [NSMutableSet set];
         _restoredTransactions = [NSMutableArray array];
+        _receiptVerifiers = [NSHashTable weakObjectsHashTable];
         [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
     }
     return self;
@@ -362,6 +363,16 @@ typedef void (^RMStoreSuccessBlock)();
     }
 }
 
+- (void)addReceiptVerifier:(id<RMStoreReceiptVerifier>)verifier {
+    if (![_receiptVerifiers containsObject:verifier]) {
+        [_receiptVerifiers addObject:verifier];
+    }
+}
+
+- (void)removeReceiptVerifier:(id<RMStoreReceiptVerifier>)verifier {
+    [_receiptVerifiers removeObject:verifier];
+}
+
 #pragma mark SKPaymentTransactionObserver
 
 - (void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray *)transactions
@@ -526,18 +537,21 @@ typedef void (^RMStoreSuccessBlock)();
 {
     RMStoreLog(@"transaction purchased with product %@", transaction.payment.productIdentifier);
     
-    if (self.receiptVerifier != nil)
-    {
-        [self.receiptVerifier verifyTransaction:transaction success:^{
+    NSArray <id<RMStoreReceiptVerifier>> *receiptVerifiers = [_receiptVerifiers allObjects];
+    for (id<RMStoreReceiptVerifier> receiptVerifier in receiptVerifiers) {
+        if (receiptVerifier != nil)
+        {
+            [receiptVerifier verifyTransaction:transaction success:^{
+                [self didVerifyTransaction:transaction queue:queue];
+            } failure:^(NSError *error) {
+                [self didFailTransaction:transaction queue:queue error:error];
+            }];
+        }
+        else
+        {
+            RMStoreLog(@"WARNING: no receipt verification");
             [self didVerifyTransaction:transaction queue:queue];
-        } failure:^(NSError *error) {
-            [self didFailTransaction:transaction queue:queue error:error];
-        }];
-    }
-    else
-    {
-        RMStoreLog(@"WARNING: no receipt verification");
-        [self didVerifyTransaction:transaction queue:queue];
+        }
     }
 }
 
@@ -572,18 +586,21 @@ typedef void (^RMStoreSuccessBlock)();
     RMStoreLog(@"transaction restored with product %@", transaction.originalTransaction.payment.productIdentifier);
     
     _pendingRestoredTransactionsCount++;
-    if (self.receiptVerifier != nil)
-    {
-        [self.receiptVerifier verifyTransaction:transaction success:^{
+    NSArray <id<RMStoreReceiptVerifier>> *receiptVerifiers = [_receiptVerifiers allObjects];
+    for (id<RMStoreReceiptVerifier> receiptVerifier in receiptVerifiers) {
+        if (receiptVerifier != nil)
+        {
+            [receiptVerifier verifyTransaction:transaction success:^{
+                [self didVerifyTransaction:transaction queue:queue];
+            } failure:^(NSError *error) {
+                [self didFailTransaction:transaction queue:queue error:error];
+            }];
+        }
+        else
+        {
+            RMStoreLog(@"WARNING: no receipt verification");
             [self didVerifyTransaction:transaction queue:queue];
-        } failure:^(NSError *error) {
-            [self didFailTransaction:transaction queue:queue error:error];
-        }];
-    }
-    else
-    {
-        RMStoreLog(@"WARNING: no receipt verification");
-        [self didVerifyTransaction:transaction queue:queue];
+        }
     }
 }
 
